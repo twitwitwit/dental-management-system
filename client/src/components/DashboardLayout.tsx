@@ -21,16 +21,15 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { navForRole, Role } from "@/lib/roles";
+import { useIsMobile as _unusedCheck } from "@/hooks/useMobile";
+import { LogOut, PanelLeft, Stethoscope } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
-];
+// Dental-themed sidebar header + role-scoped navigation.
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -47,6 +46,7 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
+  const role = (user as unknown as { role?: Role } | null)?.role ?? null;
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -105,6 +105,8 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const role = (user as unknown as { role?: Role } | null)?.role ?? null;
+  const menuItems = navForRole(role);
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -167,10 +169,18 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                    <Stethoscope className="h-4.5 w-4.5 text-primary-foreground" />
+                  </div>
+                  <div className="flex flex-col min-w-0 leading-tight">
+                    <span className="font-semibold tracking-tight truncate text-sm">
+                      Dentacare
+                    </span>
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      Clinic Management
+                    </span>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -215,6 +225,11 @@ function DashboardLayoutContent({
                     <p className="text-xs text-muted-foreground truncate mt-1.5">
                       {user?.email || "-"}
                     </p>
+                    {role ? (
+                      <span className="inline-flex mt-1 items-center w-fit rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary capitalize">
+                        {role}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               </DropdownMenuTrigger>
@@ -255,7 +270,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-5">{children}</main>
       </SidebarInset>
     </>
   );
