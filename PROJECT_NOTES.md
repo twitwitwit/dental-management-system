@@ -78,3 +78,6 @@ bar/line charts, soft shadows) — see screenshots in /home/ubuntu/upload/.
 - Verified via screenshot /patients/1 (James Wilson): chart now shows 32 distinct realistic teeth; teeth 16 and 36 colored (blue filling, purple crown) per demo data; legend present; clicks work.
 - First capture showed skeletons (capture-timing); second capture rendered fully. TS clean, no new deps.
 - Checkpoint NOT yet saved for this change (previous checkpoint b0bb47d2).
+
+## Sketch-Style Tooth Redesign (Aug 18, 2nd follow-up)
+Reworked ToothGlyph.tsx with sketch-style anatomy matching the Shutterstock reference: cross-hatch pencil shading lines inside each tooth, distinct crown shapes with cusps, three separate bulbous roots for molars, long single root for canines. Hatching inherits condition stroke color; ToothChart now passes hatchColor instead of highlight. Verified via screenshots /patients/2 (teeth 25 decay red, 26 root-canal orange, 16 missing dimmed) and /patients/5 (47 implant indigo) — shapes look like the hand-drawn anatomy reference with hatching visible. TS clean. Checkpoint pending.

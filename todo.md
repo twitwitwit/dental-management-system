@@ -80,3 +80,8 @@
 - [x] Redesign ToothChart: each tooth rendered as a distinct realistic illustration shaped by tooth type (central incisor, lateral incisor, canine, premolars, molars) with crown/root detail
 - [x] Keep condition-coloring overlay (decay, filling, crown, etc.) and click interactivity working for all 32 teeth
 - [x] Verify chart visually in browser, checkpoint, deliver
+
+## Sketch-Style Tooth Redesign (reference: Shutterstock tooth types sketch)
+- [x] Redesign glyphs: realistic anatomy per reference — molars with 2-3 separate roots and bulbous roots, canines with long single root, incisors with slender roots; sketchy cross-hatch/line shading instead of flat fill
+- [x] Keep condition color tint, missing/extraction dimming, click selection and FDI labels working
+- [x] Verify visually, checkpoint, deliver
