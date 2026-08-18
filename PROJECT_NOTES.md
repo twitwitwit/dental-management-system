@@ -71,3 +71,10 @@ bar/line charts, soft shadows) — see screenshots in /home/ubuntu/upload/.
 - client/src/pages/Home.tsx — landing/redirect
 - client/src/components/DashboardLayout.tsx — sidebar layout (menuItems -> navForRole)
 - server/routers.ts, server/db.ts, drizzle/schema.ts
+
+## Tooth Illustration Upgrade (follow-up request, Aug 18)
+- New component client/src/components/ToothGlyph.tsx: realistic per-tooth SVG glyphs shaped by type (central/lateral incisors, canine, premolar1/2, molar1/2, molar3) with crown/root/detail paths; toothTypeFromNumber(fdNumber) maps FDI number->type; toothTransform mirrors left side & flips lower teeth roots.
+- ToothChart.tsx rewritten: each cell renders <svg viewBox="0 0 100 100"><ToothGlyph/></svg> instead of generic tooth icon; CONDITION_COLORS + new CONDITION_STROKE; missing/extraction teeth dimmed 0.35; number label bottom of cell; click/condition selection preserved.
+- Verified via screenshot /patients/1 (James Wilson): chart now shows 32 distinct realistic teeth; teeth 16 and 36 colored (blue filling, purple crown) per demo data; legend present; clicks work.
+- First capture showed skeletons (capture-timing); second capture rendered fully. TS clean, no new deps.
+- Checkpoint NOT yet saved for this change (previous checkpoint b0bb47d2).

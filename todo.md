@@ -75,3 +75,8 @@
 - [x] Seed demo data for all modules
 - [x] Screenshots verified, vitest passing (14/14)
 - [x] Checkpoint saved
+
+## Tooth Chart Illustration Upgrade
+- [x] Redesign ToothChart: each tooth rendered as a distinct realistic illustration shaped by tooth type (central incisor, lateral incisor, canine, premolars, molars) with crown/root detail
+- [x] Keep condition-coloring overlay (decay, filling, crown, etc.) and click interactivity working for all 32 teeth
+- [x] Verify chart visually in browser, checkpoint, deliver

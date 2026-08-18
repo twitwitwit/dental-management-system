@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
+import { ToothGlyph } from "./ToothGlyph";
 
 /**
- * Adult dentition chart (FDI notation, 32 teeth) rendered as an SVG grid.
- * Each tooth is clickable; selected tooth is highlighted. Colors reflect
- * recorded conditions.
+ * Adult dentition chart (FDI notation, 32 teeth) rendered with a realistic
+ * tooth illustration per tooth: each of the 32 teeth is drawn as a distinct
+ * glyph shaped by type (incisors, canines, premolars, molars with roots).
+ * Colors reflect recorded conditions; each tooth is clickable.
  */
 export const CONDITION_COLORS: Record<string, string> = {
   healthy: "#10b981",
@@ -18,6 +20,20 @@ export const CONDITION_COLORS: Record<string, string> = {
   bridge: "#a855f7",
 };
 
+/** Condition fill -> stroke contrast pair used for the tooth outlines. */
+export const CONDITION_STROKE: Record<string, string> = {
+  healthy: "#047857",
+  decay: "#b91c1c",
+  filling: "#1d4ed8",
+  crown: "#6d28d9",
+  extraction: "#475569",
+  implant: "#4338ca",
+  root_canal: "#c2410c",
+  missing: "#94a3b8",
+  veneers: "#0f766e",
+  bridge: "#7e22ce",
+};
+
 /** FDI numbering: [upperRight, upperLeft, lowerLeft, lowerRight] per quadrant, each 8 teeth. */
 const QUADRANTS = [
   [18, 17, 16, 15, 14, 13, 12, 11],
@@ -28,11 +44,66 @@ const QUADRANTS = [
 
 export type ToothMap = Record<string, string>; // toothNumber -> condition key
 
+/**
+ * Renders a single illustrated tooth cell: glyph plus its FDI number label.
+ */
+function ToothCell({
+  number,
+  cond,
+  selected,
+  onSelect,
+  size,
+}: {
+  number: number;
+  cond?: string;
+  selected?: boolean;
+  onSelect?: (n: string) => void;
+  size: number;
+}) {
+  const fill = cond ? CONDITION_COLORS[cond] ?? "#f1f5f9" : "#f8fafc";
+  const stroke = cond && CONDITION_STROKE[cond] ? CONDITION_STROKE[cond] : "#94a3b8";
+  const isMissing = cond === "missing" || cond === "extraction";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect?.(String(number))}
+      aria-label={`Tooth ${number}`}
+      className={cn(
+        "flex flex-col items-center justify-center rounded-lg border transition-all duration-200",
+        selected
+          ? "border-primary ring-2 ring-primary/30 scale-105 shadow-md"
+          : cond
+            ? "border-transparent hover:scale-105 hover:shadow"
+            : "border-slate-200 hover:border-primary/50 hover:scale-105",
+      )}
+      style={{ width: size, height: size, backgroundColor: cond ? "transparent" : "#f8fafc" }}
+    >
+      <svg viewBox="0 0 100 100" className="w-full h-full px-1 py-0.5" style={{ opacity: isMissing ? 0.35 : 1 }}>
+        <ToothGlyph
+          number={number}
+          fill={fill}
+          stroke={stroke}
+          highlight={cond ? stroke : "#0f766e"}
+        />
+      </svg>
+      <span
+        className={cn(
+          "absolute bottom-0.5 text-[10px] font-semibold leading-none",
+          cond ? "text-slate-600" : "text-slate-500",
+        )}
+      >
+        {number}
+      </span>
+    </button>
+  );
+}
+
 export function ToothChart({
   conditions,
   selected,
   onSelect,
-  size = 44,
+  size = 48,
   gap = 4,
 }: {
   conditions: ToothMap;
@@ -42,65 +113,28 @@ export function ToothChart({
   gap?: number;
 }) {
   const cols = 8;
-  const rowHeight = size + gap;
   const colWidth = size + gap;
 
   return (
     <div className="w-full overflow-x-auto">
-      <div
-        className="mx-auto"
-        style={{ width: cols * colWidth + gap }}
-      >
+      <div className="mx-auto relative" style={{ width: cols * colWidth + gap }}>
         {QUADRANTS.map((quadrant, qi) => (
           <div
             key={qi}
             className="grid grid-cols-8"
             style={{ gap, marginBottom: qi === 1 ? 10 : gap }}
           >
-            {quadrant.map(number => {
-              const cond = conditions[number];
-              const color = cond ? CONDITION_COLORS[cond] ?? "#e2e8f0" : "#f1f5f9";
-              const isSelected = selected === String(number);
-              return (
-                <button
-                  key={number}
-                  type="button"
-                  onClick={() => onSelect?.(String(number))}
-                  aria-label={`Tooth ${number}`}
-                  className={cn(
-                    "flex flex-col items-center justify-center rounded-lg border transition-all",
-                    isSelected
-                      ? "border-primary ring-2 ring-primary/30 scale-105 shadow-md"
-                      : cond
-                        ? "border-transparent hover:scale-105 hover:shadow"
-                        : "border-slate-200 hover:border-primary/50 hover:scale-105",
-                  )}
-                  style={{
-                    width: size,
-                    height: size,
-                    backgroundColor: color,
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 opacity-60">
-                    <path
-                      d="M12 2c-3 0-5 2-6 4-1 2-2 6-1 10 .8 3.5 2 5 3 5 .9 0 1.3-2 2-3 .3-.4.8-.6 1.3-.6h1.4c.5 0 1 .2 1.3.6.7 1 1.1 3 2 3 1 0 2.2-1.5 3-5 1-4 0-8-1-10-1-2-3-4-6-4z"
-                      fill="white"
-                      stroke="rgba(0,0,0,0.35)"
-                      strokeWidth="1.2"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span
-                    className={cn(
-                      "mt-0.5 text-[10px] font-semibold leading-none",
-                      cond ? "text-white" : "text-slate-500",
-                    )}
-                  >
-                    {number}
-                  </span>
-                </button>
-              );
-            })}
+            {quadrant.map(number => (
+              <div key={number} className="relative">
+                <ToothCell
+                  number={number}
+                  cond={conditions[number]}
+                  selected={selected === String(number)}
+                  onSelect={onSelect}
+                  size={size}
+                />
+              </div>
+            ))}
           </div>
         ))}
       </div>
