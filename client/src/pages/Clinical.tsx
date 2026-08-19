@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { useCurrentRole } from "@/lib/roles";
 import { formatDate } from "@/lib/format";
-import { ToothChart } from "@/components/ToothChart";
+import { CONDITION_COLORS, ToothChart } from "@/components/ToothChart";
+import { SurfaceKey, ToothSurfaceChart, type SurfaceMap } from "@/components/ToothSurfaceChart";
 import {
   EmptyState,
   PageHeader,
@@ -63,11 +64,17 @@ export default function Clinical() {
     { patientId: selectedPatientId ?? 0 },
     { enabled: !!role && !!selectedPatientId },
   );
+  const canManage = role === "admin" || role === "dentist";
+  const surfaces = trpc.clinical.surfaces.useQuery(
+    { patientId: selectedPatientId ?? 0 },
+    { enabled: !!role && !!selectedPatientId && canManage },
+  );
 
   const [toothDialog, setToothDialog] = useState(false);
   const [selectedTooth, setSelectedTooth] = useState<string | null>(null);
   const [toothCondition, setToothCondition] = useState("");
   const [toothNote, setToothNote] = useState("");
+  const [activeSurface, setActiveSurface] = useState<SurfaceKey | null>(null);
 
   const [planDialog, setPlanDialog] = useState(false);
   const [planTitle, setPlanTitle] = useState("");
@@ -83,6 +90,14 @@ export default function Clinical() {
       toast.success("Tooth condition saved");
       setToothDialog(false);
       utils.clinical.toothConditions.invalidate({ patientId: selectedPatientId ?? undefined });
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  const setSurface = trpc.clinical.setSurface.useMutation({
+    onSuccess: () => {
+      toast.success("Surface updated");
+      utils.clinical.surfaces.invalidate({ patientId: selectedPatientId ?? undefined });
     },
     onError: e => toast.error(e.message),
   });
@@ -118,7 +133,6 @@ export default function Clinical() {
     onError: e => toast.error(e.message),
   });
 
-  const canManage = role === "admin" || role === "dentist";
 
   const selectedPatient = useMemo(
     () => (patients.data ?? []).find(p => p.id === selectedPatientId) ?? null,
@@ -132,6 +146,14 @@ export default function Clinical() {
     });
     return map;
   }, [conditions.data]);
+
+  const surfaceMap = useMemo(() => {
+    const map: SurfaceMap = {};
+    (surfaces.data ?? []).forEach(s => {
+      map[s.toothNumber] = { ...(map[s.toothNumber] ?? {}), [s.surface]: s.condition };
+    });
+    return map;
+  }, [surfaces.data]);
 
   return (
     <DashboardLayout>
@@ -206,12 +228,38 @@ export default function Clinical() {
                 selected={selectedTooth}
                 onSelect={n => {
                   setSelectedTooth(n);
+                  setActiveSurface(null);
                   if (canManage) setToothDialog(true);
                 }}
               />
               <p className="mt-3 text-xs text-muted-foreground text-center">
-                Click a tooth to record its condition (dentist/admin only).
+                Click a tooth to record its whole-tooth condition.
               </p>
+            </SectionCard>
+
+            <SectionCard title="Surface chart — 5 surfaces per tooth">
+              <ToothSurfaceChart
+                surfaces={surfaceMap}
+                selectedTooth={selectedTooth}
+                activeSurface={activeSurface}
+                onSelect={(toothNumber, surface) => {
+                  setSelectedTooth(toothNumber);
+                  setActiveSurface(surface);
+                  if (canManage) setToothDialog(true);
+                }}
+              />
+              <p className="mt-3 text-xs text-muted-foreground text-center">
+                Click a surface (mesial · distal · buccal · lingual · occlusal) to record decay or fillings per surface.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
+                {[["decay", CONDITION_COLORS.decay], ["filling", CONDITION_COLORS.filling], ["missing", CONDITION_COLORS.missing]].map(([k, v]) => (
+                  <span key={k} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: v }} />
+                    {k}
+                  </span>
+                ))}
+                <span className="text-[11px] text-muted-foreground">· white = healthy</span>
+              </div>
             </SectionCard>
 
             <div className="grid gap-6 lg:grid-cols-2">
@@ -315,29 +363,53 @@ export default function Clinical() {
       <Dialog open={toothDialog} onOpenChange={setToothDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Tooth {selectedTooth} — record condition</DialogTitle>
+            <DialogTitle>
+              Tooth {selectedTooth}
+              {activeSurface ? ` — ${activeSurface} surface` : " — record condition"}
+            </DialogTitle>
           </DialogHeader>
           <form
             className="grid gap-3.5"
             onSubmit={e => {
               e.preventDefault();
               if (!selectedTooth || !selectedPatientId) return;
-              setTooth.mutate({
-                patientId: selectedPatientId,
-                toothNumber: selectedTooth,
-                condition: (toothCondition || "healthy") as "healthy",
-                note: toothNote || null,
-              });
+              if (activeSurface) {
+                setSurface.mutate({
+                  patientId: selectedPatientId,
+                  toothNumber: selectedTooth,
+                  surface: activeSurface,
+                  condition: (toothCondition || "healthy") as "healthy",
+                  note: toothNote || null,
+                });
+                setToothDialog(false);
+              } else {
+                setTooth.mutate({
+                  patientId: selectedPatientId,
+                  toothNumber: selectedTooth,
+                  condition: (toothCondition || "healthy") as "healthy",
+                  note: toothNote || null,
+                });
+              }
             }}
           >
+            {activeSurface ? (
+              <p className="text-xs text-muted-foreground">
+                Marking the <span className="font-medium text-foreground">{activeSurface}</span> surface of tooth {selectedTooth}.
+                Choose <span className="font-medium">decay</span>, <span className="font-medium">filling</span>, or
+                <span className="font-medium"> healthy</span> (to clear).
+              </p>
+            ) : null}
             <div className="grid gap-1.5">
-              <Label>Condition</Label>
+              <Label>{activeSurface ? "Surface condition" : "Condition"}</Label>
               <Select value={toothCondition} onValueChange={setToothCondition}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select condition" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TOOTH_CONDITIONS.map(c => (
+                  {(activeSurface
+                    ? ["healthy", "decay", "filling", "missing"]
+                    : TOOTH_CONDITIONS
+                  ).map(c => (
                     <SelectItem key={c} value={c}>
                       {c.replaceAll("_", " ")}
                     </SelectItem>
@@ -349,8 +421,8 @@ export default function Clinical() {
               <Label>Comment (optional)</Label>
               <Input value={toothNote} onChange={e => setToothNote(e.target.value)} />
             </div>
-            <Button type="submit" disabled={setTooth.isPending} className="gap-1.5">
-              {setTooth.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPlus className="h-4 w-4" />}
+            <Button type="submit" disabled={setTooth.isPending || setSurface.isPending} className="gap-1.5">
+              {setTooth.isPending || setSurface.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPlus className="h-4 w-4" />}
               Save condition
             </Button>
           </form>

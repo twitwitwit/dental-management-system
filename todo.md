@@ -85,3 +85,11 @@
 - [x] Redesign glyphs: realistic anatomy per reference — molars with 2-3 separate roots and bulbous roots, canines with long single root, incisors with slender roots; sketchy cross-hatch/line shading instead of flat fill
 - [x] Keep condition color tint, missing/extraction dimming, click selection and FDI labels working
 - [x] Verify visually, checkpoint, deliver
+
+## Surface-Level Dental Charting (Dentsoftware-style)
+- [x] Schema: toothSurfaceConditions table (tooth number, surface, condition)
+- [x] Server: clinical.surfaces query + clinical.setSurface mutation
+- [x] UI: ToothSurfaceChart component — 5-surface square diagram (mesial/distal/buccal/lingual/occlusal) per tooth
+- [x] UI: Tooth detail dialog showing both whole-tooth and per-surface marking
+- [x] Wired into PatientDetail Clinical tab and Clinical page
+- [x] Demo surface data seeded, vitest 14/14 passing, checkpoint saved

@@ -14,6 +14,7 @@ import {
   patients,
   payments,
   toothConditions,
+  toothSurfaceConditions,
   treatmentPlans,
   treatmentProcedures,
   users,
@@ -29,6 +30,7 @@ import {
   type InsertPatientInsurance,
   type InsertPayment,
   type InsertToothCondition,
+  type InsertToothSurfaceCondition,
   type InsertTreatmentPlan,
   type InsertTreatmentProcedure,
   type InsertUser,
@@ -240,6 +242,41 @@ export async function setToothCondition(data: InsertToothCondition) {
     return existing[0].id;
   }
   const result = await db.insert(toothConditions).values(data);
+  return result[0].insertId;
+}
+
+// ---------------------------------------------------------------------------
+// Tooth surface conditions (mesial / distal / buccal / lingual / occlusal)
+// ---------------------------------------------------------------------------
+export async function getToothSurfaceConditions(patientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(toothSurfaceConditions).where(eq(toothSurfaceConditions.patientId, patientId));
+}
+
+export async function setToothSurfaceCondition(data: InsertToothSurfaceCondition) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Upsert: one condition per patient per tooth per surface
+  const existing = await db
+    .select()
+    .from(toothSurfaceConditions)
+    .where(
+      and(
+        eq(toothSurfaceConditions.patientId, data.patientId),
+        eq(toothSurfaceConditions.toothNumber, data.toothNumber),
+        eq(toothSurfaceConditions.surface, data.surface),
+      ),
+    )
+    .limit(1);
+  if (existing.length) {
+    await db
+      .update(toothSurfaceConditions)
+      .set({ condition: data.condition, note: data.note })
+      .where(eq(toothSurfaceConditions.id, existing[0].id));
+    return existing[0].id;
+  }
+  const result = await db.insert(toothSurfaceConditions).values(data);
   return result[0].insertId;
 }
 

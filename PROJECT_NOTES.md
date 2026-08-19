@@ -81,3 +81,22 @@ bar/line charts, soft shadows) — see screenshots in /home/ubuntu/upload/.
 
 ## Sketch-Style Tooth Redesign (Aug 18, 2nd follow-up)
 Reworked ToothGlyph.tsx with sketch-style anatomy matching the Shutterstock reference: cross-hatch pencil shading lines inside each tooth, distinct crown shapes with cusps, three separate bulbous roots for molars, long single root for canines. Hatching inherits condition stroke color; ToothChart now passes hatchColor instead of highlight. Verified via screenshots /patients/2 (teeth 25 decay red, 26 root-canal orange, 16 missing dimmed) and /patients/5 (47 implant indigo) — shapes look like the hand-drawn anatomy reference with hatching visible. TS clean. Checkpoint pending.
+
+## Dentsoftware reference (user link, Aug 19)
+Page: https://www.dentsoftware.com/dental-clinic-software/ — commercial dental clinic software.
+Key feature highlights the user may want to adopt:
+- Appointments: drag & drop, color-coded status, day/week/month/doctor/operatory views, waiting list, recall, time checker, check-in.
+- Dental charting: mark full mouth/arches/quadrants/teeth AND SURFACES; adult + pedo + mixed dentition charts; multiple treatment plans; auto progress notes; tooth notes.
+- Reception: patient photo upload, barcode cards, consents w/ digital signature, automated ID generation, check-in system.
+- Billing: multiple payment modes, insurance-integrated claims.
+- Perio charting: pockets, furcation, bleeding, mobility.
+- Prescriptions with presets; lab works; medical alerts (allergies/medication); expense module; imaging/radiology; security/permissions (HIPAA).
+User's intent unclear — shared link without instruction. Need to ask which direction: adopt feature ideas (e.g., tooth surfaces charting, perio charting, patient photo, drag-drop appointment calendar) or use it as UI benchmark.
+
+## Surface-Level Dental Charting (Aug 19, current work)
+User requested Dentsoftware-style dental charting: per-surface marking. Plan: 5 surfaces (mesial, distal, buccal, lingual, occlusal), whole-tooth conditions stay.
+DONE: schema toothSurfaceConditions table added (drizzle/schema.ts ~line 106); migration drizzle/0002_illegal_payback.sql generated and APPLIED via webdev_execute_sql.
+DONE: db.ts helpers + routers.ts clinical.surfaces / clinical.setSurface added. UI: ToothSurfaceChart.tsx created (5-section square diagram; decay=red, filling=blue, missing=grey). PatientDetail.tsx + Clinical.tsx wired (activeSurface state, shared tooth dialog handles surface or whole-tooth). Hook-order bug fixed (canManage before surfaces query). TS clean.
+Screenshot /patients/1 shows Overview tab fine (whole-tooth chart OK). TODO: verify Clinical tab surface chart renders, seed demo surface data, run pnpm test, checkpoint.
+Key file refs: toothConditions in db.ts lines 218-242 (getToothConditions helper pattern); routers.ts clinical router at line ~207. PatientDetail.tsx Clinical tab uses ToothChart component; Clinical.tsx also uses ToothChart. CONDITION_COLORS defined in ToothChart.tsx (re-exportable). Condition enum: healthy, decay, filling, crown, extraction, implant, root_canal, missing, veneers, bridge.
+Existing checkpoints: b0bb47d2 (initial), 4ebbef04 (illustrations), b5bff90c (sketch-style). Next checkpoint: b5bff90c+this work.

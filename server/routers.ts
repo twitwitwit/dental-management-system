@@ -235,6 +235,38 @@ export const appRouter = router({
         const id = await db.setToothCondition(input);
         return { id };
       }),
+    surfaces: protectedProcedure
+      .input(z.object({ patientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        requireRoles(ctx, dentistOrAdmin);
+        return db.getToothSurfaceConditions(input.patientId);
+      }),
+    setSurface: protectedProcedure
+      .input(
+        z.object({
+          patientId: z.number(),
+          toothNumber: z.string().min(1).max(4),
+          surface: z.enum(["mesial", "distal", "buccal", "lingual", "occlusal"]),
+          condition: z.enum([
+            "healthy",
+            "decay",
+            "filling",
+            "crown",
+            "extraction",
+            "implant",
+            "root_canal",
+            "missing",
+            "veneers",
+            "bridge",
+          ]),
+          note: z.string().nullable().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        requireRoles(ctx, dentistOrAdmin);
+        const id = await db.setToothSurfaceCondition(input);
+        return { id };
+      }),
     plans: protectedProcedure
       .input(z.object({ patientId: z.number().optional() }))
       .query(async ({ ctx, input }) => {

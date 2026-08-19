@@ -102,6 +102,26 @@ export const toothConditions = mysqlTable("toothConditions", {
 export type ToothCondition = typeof toothConditions.$inferSelect;
 export type InsertToothCondition = typeof toothConditions.$inferInsert;
 
+/** Per-surface conditions (mesial, distal, buccal, lingual, occlusal) per tooth. */
+export const toothSurfaceConditions = mysqlTable("toothSurfaceConditions", {
+  id: int("id").autoincrement().primaryKey(),
+  patientId: int("patientId").notNull(),
+  toothNumber: varchar("toothNumber", { length: 4 }).notNull(),
+  /** Surface of the tooth: mesial, distal, buccal, lingual, occlusal. */
+  surface: mysqlEnum("surface", ["mesial", "distal", "buccal", "lingual", "occlusal"]).notNull(),
+  condition: mysqlEnum(
+    "condition",
+    ["healthy", "decay", "filling", "crown", "extraction", "implant", "root_canal", "missing", "veneers", "bridge"]
+  )
+    .default("healthy")
+    .notNull(),
+  note: text("note"),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+
+export type ToothSurfaceCondition = typeof toothSurfaceConditions.$inferSelect;
+export type InsertToothSurfaceCondition = typeof toothSurfaceConditions.$inferInsert;
+
 /** Treatment plans maintained per patient. */
 export const treatmentPlans = mysqlTable("treatmentPlans", {
   id: int("id").autoincrement().primaryKey(),
