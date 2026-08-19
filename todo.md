@@ -101,9 +101,15 @@
 - [x] Verify visually (patient detail + clinical page), run tests (14/14), checkpoint, deliver
 
 ## Canva Prototype Showcase (user request)
-- [ ] Capture clean full-page screenshots of each app module page (Dashboard, Patients, Appointments, Clinical, Billing, Inventory, Insurance, Reports, Staff, Settings)
-- [ ] Prepare screenshot assets (crop sidebar, consistent 16:9 framing)
-- [ ] Create one high-fidelity prototype design per module in the user's Canva account
-- [ ] Verify designs render correctly in Canva, export as images, and deliver links/exports
+- [x] Capture clean full-page screenshots of each app module page (Dashboard, Patients, Appointments, Clinical, Billing, Inventory, Insurance, Reports, Staff, Settings)
+- [x] Prepare screenshot assets (crop sidebar, consistent 16:9 framing)
+- [x] Create one high-fidelity prototype design per module in the user's Canva account — PPTX at /home/ubuntu/dentacare_prototype.pptx, imported as Canva presentation "Dentacare Prototype Pages" (design DAHStl9D-8c) in folder FAHStj-chIs
+- [x] Verify designs render correctly in Canva, export as PNG, and deliver links/exports (canva_sheet.png + exports zip verified)
 
 Screenshot crops verified: sidebar correctly removed on all 10 modules; each content crop is 1360px wide (heights 913–3204px). Assets ready at /home/ubuntu/canva_shots/*_content.png. Billing/inventory crops confirmed clean.
+
+## Reference-Layout Chart Rebuild (user's exported odontogram SVG as reference)
+- [x] Analyze the exported SVG: continuous gingiva band per arch, tooth placement/orientation, FDI number labels above/below
+- [x] Rebuild ToothChart layout to match reference: full 32-tooth row per arch, correct arch order 18-11/21-28 (upper) and 48-41/31-38 (lower), FDI number rows, auto-fit container width (glyphs' own bone/gum layers form the continuous band)
+- [x] Keep anatomy glyphs, condition tinting, surface charting, click selection
+- [x] Verify visually (/patients/1 + /clinical), tsc clean, tests 14/14, checkpoint, deliver

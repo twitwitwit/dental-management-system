@@ -1,11 +1,14 @@
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ToothGlyph } from "./ToothGlyph";
 
 /**
- * Adult dentition chart (FDI notation, 32 teeth) rendered with a realistic
- * tooth illustration per tooth: each of the 32 teeth is drawn as a distinct
- * glyph shaped by type (incisors, canines, premolars, molars with roots).
- * Colors reflect recorded conditions; each tooth is clickable.
+ * Adult dentition chart (FDI notation, 32 teeth) laid out like the reference
+ * odontogram export: each arch is one continuous row — the glyphs carry their
+ * own cream bone and pink gum-base layers, so adjacent teeth visually join
+ * into one continuous arch band. FDI numbers sit above the upper arch and
+ * below the lower arch. Colors reflect recorded conditions; teeth are
+ * clickable. The chart auto-fits its container width.
  */
 export const CONDITION_COLORS: Record<string, string> = {
   healthy: "#10b981",
@@ -20,7 +23,7 @@ export const CONDITION_COLORS: Record<string, string> = {
   bridge: "#a855f7",
 };
 
-/** Condition fill -> stroke contrast pair used for the tooth outlines. */
+/** Condition fill -> stroke contrast pair used for highlights. */
 export const CONDITION_STROKE: Record<string, string> = {
   healthy: "#047857",
   decay: "#b91c1c",
@@ -34,110 +37,132 @@ export const CONDITION_STROKE: Record<string, string> = {
   bridge: "#7e22ce",
 };
 
-/** FDI numbering: [upperRight, upperLeft, lowerLeft, lowerRight] per quadrant, each 8 teeth. */
-const QUADRANTS = [
-  [18, 17, 16, 15, 14, 13, 12, 11],
-  [21, 22, 23, 24, 25, 26, 27, 28],
-  [31, 32, 33, 34, 35, 36, 37, 38],
-  [48, 47, 46, 45, 44, 43, 42, 41],
-];
+/** Upper arch left-to-right: 18..11 then 21..28. Lower arch: 48..41 then 31..38. */
+const UPPER_ARCH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+const LOWER_ARCH = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
 export type ToothMap = Record<string, string>; // toothNumber -> condition key
-
-/**
- * Renders a single illustrated tooth cell: glyph plus its FDI number label.
- */
-function ToothCell({
-  number,
-  cond,
-  selected,
-  onSelect,
-  size,
-}: {
-  number: number;
-  cond?: string;
-  selected?: boolean;
-  onSelect?: (n: string) => void;
-  size: number;
-}) {
-  const fill = cond ? CONDITION_COLORS[cond] ?? "#f1f5f9" : "#f8fafc";
-  const stroke = cond && CONDITION_STROKE[cond] ? CONDITION_STROKE[cond] : "#94a3b8";
-  const isMissing = cond === "missing" || cond === "extraction";
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(String(number))}
-      aria-label={`Tooth ${number}`}
-      className={cn(
-        "flex flex-col items-center justify-center rounded-lg border transition-all duration-200",
-        selected
-          ? "border-primary ring-2 ring-primary/30 scale-105 shadow-md"
-          : cond
-            ? "border-transparent hover:scale-105 hover:shadow"
-            : "border-slate-200 hover:border-primary/50 hover:scale-105",
-      )}
-      style={{ width: size, height: size, backgroundColor: cond ? "transparent" : "#f8fafc" }}
-    >
-      <svg viewBox="0 0 100 100" className="w-full h-full px-1 py-0.5" style={{ opacity: isMissing ? 0.35 : 1 }}>
-        <ToothGlyph
-          number={number}
-          fill={fill}
-          stroke={stroke}
-          cond={cond}
-          selected={selected}
-        />
-      </svg>
-      <span
-        className={cn(
-          "absolute bottom-0.5 text-[10px] font-semibold leading-none",
-          cond ? "text-slate-600" : "text-slate-500",
-        )}
-      >
-        {number}
-      </span>
-    </button>
-  );
-}
 
 export function ToothChart({
   conditions,
   selected,
   onSelect,
-  size = 48,
-  gap = 4,
+  size,
+  gap = 6,
 }: {
   conditions: ToothMap;
   selected?: string | null;
   onSelect?: (toothNumber: string) => void;
+  /** per-cell size in px; auto-fits the container when omitted */
   size?: number;
   gap?: number;
 }) {
-  const cols = 8;
-  const colWidth = size + gap;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [autoWidth, setAutoWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(entries => {
+      for (const e of entries) setAutoWidth(e.contentRect.width);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const cols = 16;
+  const width = autoWidth ?? 0;
+  const sizeAuto = Math.floor((width - (cols - 1) * gap) / cols);
+  const cellSize = size ?? Math.max(26, Math.min(sizeAuto, 64));
 
-  return (
-    <div className="w-full overflow-x-auto">
-      <div className="mx-auto relative" style={{ width: cols * colWidth + gap }}>
-        {QUADRANTS.map((quadrant, qi) => (
+  function renderArch(arch: number[], isUpper: boolean) {
+      return (
+      <div key={isUpper ? "upper" : "lower"} className="relative" style={{ width }}>
+        {/* FDI number row */}
+        <div
+          className="grid justify-items-center"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+            columnGap: gap,
+            height: 18,
+          }}
+        >
+          {arch.map(n => (
+            <span
+              key={n}
+              className={cn(
+                "text-[11px] font-bold leading-none",
+                selected === String(n) ? "text-primary" : "text-slate-500",
+              )}
+              style={{ width: cellSize }}
+            >
+              {n}
+            </span>
+          ))}
+        </div>
+        {/* teeth row — the glyphs' own bone/gum layers adjoin side by side
+            to form the continuous arch band, like the reference export */}
+        <div className="relative" style={{ height: cellSize }}>
           <div
-            key={qi}
-            className="grid grid-cols-8"
-            style={{ gap, marginBottom: qi === 1 ? 10 : gap }}
+            className="justify-items-center relative"
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+              columnGap: gap,
+            }}
           >
-            {quadrant.map(number => (
-              <div key={number} className="relative">
-                <ToothCell
-                  number={number}
-                  cond={conditions[number]}
-                  selected={selected === String(number)}
-                  onSelect={onSelect}
-                  size={size}
-                />
-              </div>
+            {arch.map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onSelect?.(String(n))}
+                aria-label={`Tooth ${n}`}
+                className={cn(
+                  "relative rounded-md transition-all duration-200 cursor-pointer",
+                  selected === String(n) && "scale-105",
+                )}
+                style={{
+                  width: cellSize,
+                  height: cellSize,
+                  marginTop: isUpper ? 0 : 10,
+                  zIndex: selected === String(n) ? 10 : 1,
+                }}
+              >
+                <svg
+                  viewBox="0 0 44 90"
+                  className="w-full h-full"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  <ToothGlyph
+                    number={n}
+                    fill={
+                      conditions[n] ? CONDITION_COLORS[conditions[n]] : "#f8fafc"
+                    }
+                    stroke={
+                      conditions[n] && CONDITION_STROKE[conditions[n]]
+                        ? CONDITION_STROKE[conditions[n]]
+                        : "#94a3b8"
+                    }
+                    cond={conditions[n]}
+                    selected={selected === String(n)}
+                  />
+                </svg>
+                {selected === String(n) && (
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 h-1 w-10 bg-primary rounded-full" />
+                )}
+              </button>
             ))}
           </div>
-        ))}
+        </div>
+      </div>
+      );
+  }
+
+  return (
+    <div ref={wrapRef} className="w-full">
+      <div className="mx-auto" style={{ width: width || 640 }}>
+        {renderArch(UPPER_ARCH, true)}
+        {/* inter-arch spacing (midline gap, like the reference export) */}
+        <div style={{ height: 40 }} />
+        {renderArch(LOWER_ARCH, false)}
       </div>
     </div>
   );
