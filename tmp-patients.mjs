@@ -1,0 +1,1 @@
+import mysql from "mysql2/promise"; const c = await mysql.createConnection(process.env.DATABASE_URL); const [rows] = await c.execute("SELECT id, firstName, lastName FROM patients ORDER BY id LIMIT 25"); console.log(JSON.stringify(rows, null, 1)); await c.end();

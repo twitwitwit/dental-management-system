@@ -113,3 +113,22 @@ Screenshot crops verified: sidebar correctly removed on all 10 modules; each con
 - [x] Rebuild ToothChart layout to match reference: full 32-tooth row per arch, correct arch order 18-11/21-28 (upper) and 48-41/31-38 (lower), FDI number rows, auto-fit container width (glyphs' own bone/gum layers form the continuous band)
 - [x] Keep anatomy glyphs, condition tinting, surface charting, click selection
 - [x] Verify visually (/patients/1 + /clinical), tsc clean, tests 14/14, checkpoint, deliver
+
+## Sidebar Fix + Odontogram Feature Additions (user request)
+- [x] Diagnose sidebar issue: inspect DashboardLayout and each page for sidebar layout/render bugs (persisted localStorage width had shrunk to icon-rail size)
+- [x] Fix sidebar so it renders and behaves correctly on every page — clamped persisted width on load (MIN_WIDTH–MAX_WIDTH), restore DEFAULT_WIDTH when reopening after collapse
+- [ ] Dental chart: Status vs Plan marking modes (current findings vs planned treatments)
+- [ ] Dental chart: visibility toggles (bone, pulp, wisdom teeth)
+- [ ] Dental chart: quick arch presets (upper/lower, 6 front, molars, all)
+- [ ] Periodontal status: schema (periodontal status table per tooth or 6-point probing values)
+- [ ] Periodontal status: server tRPC procedures
+- [ ] Periodontal status: chart view tab (like the reference demo) with per-tooth marking
+- [ ] Demo seed data for periodontal status
+- [ ] Verify all pages visually, tests 14/14, checkpoint, deliver
+
+## Final Chart Refinement
+- [x] Enlarge tooth glyphs so crowns fill their cells better (cell ratio changed to 1:1.75, size cap raised to 72)
+- [x] Fix vertical spacing: lower arch must not overlap the "Quick groups" row (added chart padding, tighter arch geometry)
+- [x] Mirror Status/Plan toggle, visibility toggles (bone/pulp/wisdom) onto Clinical page chart + "Saving to" status/plan selector
+- [x] Seed demo periodontal records for demo patients (28 rows each for patients 1-4, perio-focused dataset for patient 4)
+- [x] Run full vitest suite (14/14) + final visual verification

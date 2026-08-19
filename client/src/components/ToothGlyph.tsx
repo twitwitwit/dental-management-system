@@ -125,6 +125,11 @@ export function ToothGlyph({
   cond,
   opacity = 1,
   selected,
+  /** planned-treatment layer — rendered as a dashed outline, like the reference odontogram */
+  plan = false,
+  /** visibility layers from the reference odontogram controls */
+  showBone = true,
+  showPulp = true,
 }: {
   number: number; // FDI number, e.g. 16
   fill?: string;
@@ -133,9 +138,11 @@ export function ToothGlyph({
   cond?: string;
   opacity?: number;
   selected?: boolean;
+  plan?: boolean;
+  showBone?: boolean;
+  showPulp?: boolean;
 }) {
   void fill;
-  void stroke;
   const { tpl, mirror } = useMemo(() => templateFor(number), [number]);
   void mirror;
   const art = useMemo(() => ANATOMY[tpl], [tpl]);
@@ -145,18 +152,26 @@ export function ToothGlyph({
   const isMissing = cond === "missing" || cond === "extraction";
 
   return (
-    <g transform={transform} style={{ opacity: isMissing ? 0.4 : opacity }}>
+    <g transform={transform} style={{ opacity: cond && cond !== "healthy" && isMissing ? 0.4 : opacity }}>
       {/* condition-tinted artwork */}
       <g
+        className="odontogram-art"
+        data-show-bone={showBone}
+        data-show-pulp={showPulp}
+        data-plan={plan}
         style={{
           filter: selected
             ? `${tint} drop-shadow(0 0 2.5px ${stroke})`
-            : fillTint,
+            : plan
+              ? "none"
+              : fillTint,
+          strokeDasharray: plan ? "2.6 2" : undefined,
+          opacity: plan ? 0.9 : undefined,
         }}
         dangerouslySetInnerHTML={{ __html: art.inner }}
       />
       {/* selection ring around the crown */}
-      {selected && (
+      {selected && !plan && (
         <rect
           x={-6}
           y={-10}
@@ -167,6 +182,21 @@ export function ToothGlyph({
           stroke={stroke}
           strokeWidth={2.2}
           strokeDasharray="3.5 2.5"
+        />
+      )}
+      {/* plan-mode halo: dashed rounded outline around the crown */}
+      {plan && (
+        <rect
+          x={-5}
+          y={-8}
+          width={48}
+          height={68}
+          rx={9}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={1.6}
+          strokeDasharray="3 2"
+          opacity={0.85}
         />
       )}
     </g>

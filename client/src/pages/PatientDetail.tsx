@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { cn } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { PerioDialog } from "@/components/PerioDialog";
 import { useCurrentRole } from "@/lib/roles";
 import { formatDate } from "@/lib/format";
-import { CONDITION_COLORS, ToothChart } from "@/components/ToothChart";
+import { CONDITION_COLORS, presetTeeth, ToothChart, type ChartPreset } from "@/components/ToothChart";
+import { PerioChart, perioSummary, type PerioCell, type PerioMap } from "@/components/PerioChart";
 import {
   SurfaceKey,
   ToothSurfaceChart,
@@ -51,6 +54,15 @@ export default function PatientDetail({ id }: { id: number }) {
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  // Odontogram-style controls: status vs plan layer, visibility toggles
+  const [chartMode, setChartMode] = useState<"status" | "plan">("status");
+  const [showBone, setShowBone] = useState(true);
+  const [showPulp, setShowPulp] = useState(true);
+  const [showWisdom, setShowWisdom] = useState(true);
+  const [perioSelected, setPerioSelected] = useState<string | null>(null);
+  const [perioDialogOpen, setPerioDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"status" | "plan">("status");
+  const [bulkGroup, setBulkGroup] = useState<string[] | null>(null);
 
   const patient = trpc.patients.get.useQuery({ id }, { enabled: !!role && !!id });
   const conditions = trpc.clinical.toothConditions.useQuery(
@@ -70,6 +82,10 @@ export default function PatientDetail({ id }: { id: number }) {
     { patientId: id },
     { enabled: !!role },
   );
+  const perio = trpc.clinical.perio.useQuery(
+    { patientId: id },
+    { enabled: !!role && isDentist },
+  );
   const insurances = trpc.insurance.patientInsurance.useQuery(
     { patientId: id },
     { enabled: !!role },
@@ -79,6 +95,24 @@ export default function PatientDetail({ id }: { id: number }) {
     onSuccess: () => {
       toast.success("Tooth condition saved");
       setToothDialogOpen(false);
+      utils.clinical.toothConditions.invalidate({ patientId: id });
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  const setPerio = trpc.clinical.setPerio.useMutation({
+    onSuccess: () => {
+      toast.success("Periodontal status saved");
+      setPerioDialogOpen(false);
+      utils.clinical.perio.invalidate({ patientId: id });
+    },
+    onError: e => toast.error(e.message),
+  });
+  const setToothBulk = trpc.clinical.setToothConditionsBulk.useMutation({
+    onSuccess: () => {
+      toast.success("Condition applied to selected teeth");
+      setToothDialogOpen(false);
+      setBulkGroup(null);
       utils.clinical.toothConditions.invalidate({ patientId: id });
     },
     onError: e => toast.error(e.message),
@@ -139,8 +173,31 @@ export default function PatientDetail({ id }: { id: number }) {
   }
 
   const condMap = (conditions.data ?? []).reduce(
-    (acc, c) => ({ ...acc, [c.toothNumber]: c.condition }),
+    (acc, c) => {
+      const key = c.mode === "plan" ? `${c.toothNumber}:plan` : c.toothNumber;
+      return { ...acc, [key]: c.condition };
+    },
     {} as Record<string, string>,
+  );
+  const statusMap: Record<string, string> = {};
+  const planMap: Record<string, string> = {};
+  for (const [k, v] of Object.entries(condMap)) {
+    if (k.endsWith(":plan")) planMap[k.slice(0, -5)] = v;
+    else statusMap[k] = v;
+  }
+  const perioMap: PerioMap = (perio.data ?? []).reduce(
+    (acc, p) => ({
+      ...acc,
+      [p.toothNumber]: {
+        toothNumber: p.toothNumber,
+        pd: [Number(p.pd1), Number(p.pd2), Number(p.pd3), Number(p.pd4), Number(p.pd5), Number(p.pd6)] as [number, number, number, number, number, number],
+        recession: Number(p.recession),
+        mobility: p.mobility,
+        bleeding: Boolean(p.bleeding),
+        plaque: Boolean(p.plaque),
+      },
+    }),
+    {} as PerioMap,
   );
 
   const surfaceMap = (surfaces.data ?? []).reduce(
@@ -207,17 +264,88 @@ export default function PatientDetail({ id }: { id: number }) {
 
         <TabsContent value="overview" className="grid gap-6 lg:grid-cols-2">
           <SectionCard title="Dental chart">
+            {isDentist && (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {/* Status / Plan layer toggle */}
+                <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+                  {(["status", "plan"] as const).map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setChartMode(m)}
+                      className={cn(
+                        "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                        chartMode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {m === "status" ? "Status" : "Plan"}
+                    </button>
+                  ))}
+                </div>
+                {/* Visibility toggles */}
+                {(["showBone", "showPulp", "showWisdom"] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      if (t === "showBone") setShowBone(v => !v);
+                      if (t === "showPulp") setShowPulp(v => !v);
+                      if (t === "showWisdom") setShowWisdom(v => !v);
+                    }}
+                    className={cn(
+                      "rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                      (t === "showBone" ? showBone : t === "showPulp" ? showPulp : showWisdom)
+                        ? "border-primary/40 bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground",
+                    )}
+                  >
+                    {t === "showBone" ? "Bone" : t === "showPulp" ? "Pulp" : "Wisdom teeth"}
+                  </button>
+                ))}
+              </div>
+            )}
             <ToothChart
-              conditions={condMap}
+              conditions={statusMap}
+              planConditions={chartMode === "plan" ? undefined : (Object.keys(planMap).length ? planMap : undefined)}
               selected={selectedTooth}
               onSelect={n => {
                 setSelectedTooth(n);
                 setActiveSurface(null);
                 if (isDentist) setToothDialogOpen(true);
               }}
-              size={40}
+              size={56}
               gap={3}
+              showBone={showBone}
+              showPulp={showPulp}
+              showWisdom={showWisdom}
             />
+            {isDentist && (
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                <span className="mr-1 text-[11px] text-muted-foreground">Quick groups:</span>
+                {(Object.keys({ all: 1, upper: 1, lower: 1, front6: 1, molars: 1 }) as ChartPreset[]).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      setBulkGroup(presetTeeth(p));
+                      setToothDialogOpen(true);
+                    }}
+                    className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+                  >
+                    {p === "front6" ? "Front six" : p === "all" ? "All" : p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("clinical");
+                  }}
+                  className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+                >
+                  Perio status
+                </button>
+              </div>
+            )}
             <p className="mt-4 text-xs text-muted-foreground text-center">
               Click a tooth to record its condition.
             </p>
@@ -292,10 +420,38 @@ export default function PatientDetail({ id }: { id: number }) {
         <TabsContent value="clinical">
           <div className="grid gap-6 lg:grid-cols-2">
             <SectionCard title="Dental chart — whole tooth">
-              <ToothChart conditions={condMap} size={40} gap={3} />
+              <ToothChart conditions={condMap} size={56} gap={3} />
               <p className="mt-3 text-xs text-muted-foreground text-center">
                 Click a tooth to record its whole-tooth condition.
               </p>
+            </SectionCard>
+            <SectionCard
+              title="Periodontal status"
+              actions={
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: perioSummary(perioMap).color }}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: perioSummary(perioMap).color }} />
+                  {perioSummary(perioMap).label}
+                </span>
+              }
+            >
+              {isDentist ? (
+                <>
+                  <PerioChart
+                    perio={perioMap}
+                    selected={perioSelected}
+                    onSelect={n => {
+                      setPerioSelected(n);
+                      setPerioDialogOpen(true);
+                    }}
+                    showWisdom={showWisdom}
+                  />
+                  <p className="mt-3 text-xs text-muted-foreground text-center">
+                    Click a tooth to record the six-point probing depths (mm), recession, mobility, bleeding and plaque.
+                  </p>
+                </>
+              ) : (
+                <PerioChart perio={perioMap} showWisdom={showWisdom} />
+              )}
             </SectionCard>
             <SectionCard title="Surface chart — 5 surfaces per tooth">
               <ToothSurfaceChart
@@ -392,15 +548,17 @@ export default function PatientDetail({ id }: { id: number }) {
           setToothDialogOpen(open);
           if (!open) {
             setActiveSurface(null);
+            setBulkGroup(null);
             setToothCondition("");
             setToothNote("");
+            setDialogMode(chartMode);
           }
         }}
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              Tooth {selectedTooth}
+              {bulkGroup ? `${bulkGroup.length} teeth selected` : `Tooth ${selectedTooth}`}
               {activeSurface ? ` — ${activeSurface} surface` : " — record condition"}
             </DialogTitle>
           </DialogHeader>
@@ -408,26 +566,61 @@ export default function PatientDetail({ id }: { id: number }) {
             className="grid gap-3.5"
             onSubmit={e => {
               e.preventDefault();
-              if (!selectedTooth) return;
+              if (!selectedTooth && !bulkGroup?.length) return;
+              const tn = selectedTooth ?? "";
+              const cond = (toothCondition || "healthy") as "healthy";
               if (activeSurface) {
                 setSurface.mutate({
                   patientId: id,
-                  toothNumber: selectedTooth,
+                  toothNumber: tn,
                   surface: activeSurface,
-                  condition: (toothCondition || "healthy") as "healthy",
+                  condition: cond,
                   note: toothNote || null,
                 });
                 setToothDialogOpen(false);
+              } else if (bulkGroup) {
+                setToothBulk.mutate({
+                  patientId: id,
+                  teeth: bulkGroup.map(toothNumber => ({
+                    toothNumber,
+                    condition: cond,
+                    mode: dialogMode,
+                    note: toothNote || null,
+                  })),
+                });
               } else {
                 setTooth.mutate({
                   patientId: id,
-                  toothNumber: selectedTooth,
-                  condition: (toothCondition || "healthy") as "healthy",
+                  toothNumber: tn,
+                  condition: cond,
+                  mode: dialogMode,
                   note: toothNote || null,
                 });
               }
             }}
           >
+            {bulkGroup && !activeSurface && (
+              <p className="rounded-md bg-muted/60 px-2 py-1 text-xs text-muted-foreground">
+                Applying to {bulkGroup.length} teeth ({bulkGroup[0]}{bulkGroup.length > 1 ? `…${bulkGroup[bulkGroup.length - 1]}` : ""})
+              </p>
+            )}
+            {!activeSurface && !bulkGroup && (
+              <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+                {(["status", "plan"] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setDialogMode(m)}
+                    className={cn(
+                      "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                      dialogMode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                    )}
+                  >
+                    {m === "status" ? "Current (status)" : "Planned (plan)"}
+                  </button>
+                ))}
+              </div>
+            )}
             {activeSurface ? (
               <p className="text-xs text-muted-foreground">
                 Marking the <span className="font-medium text-foreground">{activeSurface}</span> surface of tooth {selectedTooth}.
@@ -457,13 +650,26 @@ export default function PatientDetail({ id }: { id: number }) {
               <Label>Comment (optional)</Label>
               <Input value={toothNote} onChange={e => setToothNote(e.target.value)} />
             </div>
-            <Button type="submit" disabled={setTooth.isPending || setSurface.isPending} className="gap-1.5">
-              {setTooth.isPending || setSurface.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPlus className="h-4 w-4" />}
+            <Button type="submit" disabled={setTooth.isPending || setSurface.isPending || setToothBulk.isPending} className="gap-1.5">
+              {setTooth.isPending || setSurface.isPending || setToothBulk.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPlus className="h-4 w-4" />}
               Save condition
             </Button>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Periodontal probing dialog — 6-point charting per tooth */}
+      <PerioDialog
+        open={perioDialogOpen}
+        onOpenChange={setPerioDialogOpen}
+        toothNumber={perioSelected ?? ""}
+        existing={perioSelected ? perioMap[perioSelected] ?? null : null}
+        saving={setPerio.isPending}
+        onSave={data => {
+          if (!perioSelected) return;
+          setPerio.mutate({ patientId: id, toothNumber: perioSelected, ...data });
+        }}
+      />
 
       {/* Clinical note dialog */}
       <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>

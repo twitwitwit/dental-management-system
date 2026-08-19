@@ -78,3 +78,17 @@
   background: oklch(0.95 0.035 150);
   color: oklch(0.6 0.1 150);
 }
+
+/* Odontogram art: visibility toggles from the reference chart controls.
+   Bone (id#bone-base/#gum-base) and pulp (id *healthy-pulp) can be hidden via
+   data-show-bone / data-show-pulp attributes set by ToothGlyph. */
+.odontogram-art[data-show-bone="false"] #bone-base,
+.odontogram-art[data-show-bone="false"] #gum-base {
+  display: none;
+}
+.odontogram-art[data-show-pulp="false"] [id$="-healthy-pulp"] {
+  display: none;
+}
+.odontogram-art[data-plan="true"] {
+  stroke-width: 1.1;
+}

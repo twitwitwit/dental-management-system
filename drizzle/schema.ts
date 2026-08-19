@@ -96,6 +96,8 @@ export const toothConditions = mysqlTable("toothConditions", {
     .default("healthy")
     .notNull(),
   note: text("note"),
+  /** Chart layer: "status" = current findings, "plan" = planned treatment (rendered dashed). */
+  mode: mysqlEnum("mode", ["status", "plan"]).default("status").notNull(),
   recordedAt: timestamp("recordedAt").defaultNow().notNull(),
 });
 
@@ -168,6 +170,35 @@ export const clinicalNotes = mysqlTable("clinicalNotes", {
 
 export type ClinicalNote = typeof clinicalNotes.$inferSelect;
 export type InsertClinicalNote = typeof clinicalNotes.$inferInsert;
+
+/**
+ * Periodontal (gum) status per tooth.
+ * Stores the 6-point probing pocket depths per tooth plus recession, mobility,
+ * and bleeding-on-probing flags — mirroring the periodontal view of the
+ * reference odontogram.
+ */
+export const periodontalStatus = mysqlTable("periodontalStatus", {
+  id: int("id").autoincrement().primaryKey(),
+  patientId: int("patientId").notNull(),
+  toothNumber: varchar("toothNumber", { length: 4 }).notNull(),
+  /** Six probing depths in mm, in sextant order (mesiobuccal .. distopalatal). */
+  pd1: decimal("pd1", { precision: 4, scale: 1 }).default("0").notNull(),
+  pd2: decimal("pd2", { precision: 4, scale: 1 }).default("0").notNull(),
+  pd3: decimal("pd3", { precision: 4, scale: 1 }).default("0").notNull(),
+  pd4: decimal("pd4", { precision: 4, scale: 1 }).default("0").notNull(),
+  pd5: decimal("pd5", { precision: 4, scale: 1 }).default("0").notNull(),
+  pd6: decimal("pd6", { precision: 4, scale: 1 }).default("0").notNull(),
+  /** Gingival recession in mm at the deepest site. */
+  recession: decimal("recession", { precision: 4, scale: 1 }).default("0").notNull(),
+  /** Mobility grade 0..3. */
+  mobility: mysqlEnum("mobility", ["0", "1", "2", "3"]).default("0").notNull(),
+  bleeding: int("bleeding").default(0).notNull(),
+  plaque: int("plaque").default(0).notNull(),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+
+export type PeriodontalStatus = typeof periodontalStatus.$inferSelect;
+export type InsertPeriodontalStatus = typeof periodontalStatus.$inferInsert;
 
 /** Invoices generated from treatment plans. */
 export const invoices = mysqlTable("invoices", {

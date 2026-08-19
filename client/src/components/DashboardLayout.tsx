@@ -43,7 +43,11 @@ export default function DashboardLayout({
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
-    return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
+    const parsed = saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
+    // Guard against a stale/corrupt persisted width (e.g., icon-rail size)
+    return Number.isFinite(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH
+      ? parsed
+      : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
   const role = (user as unknown as { role?: Role } | null)?.role ?? null;
@@ -88,7 +92,10 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+      <DashboardLayoutContent
+        sidebarWidth={sidebarWidth}
+        setSidebarWidth={setSidebarWidth}
+      >
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -97,11 +104,13 @@ export default function DashboardLayout({
 
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
+  sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
 };
 
 function DashboardLayoutContent({
   children,
+  sidebarWidth,
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
@@ -118,8 +127,14 @@ function DashboardLayoutContent({
   useEffect(() => {
     if (isCollapsed) {
       setIsResizing(false);
+      return;
     }
-  }, [isCollapsed]);
+    // When the sidebar reopens after being collapsed, restore a usable width
+    // (a saved width may have shrunk to the icon-rail size while collapsed).
+    if (sidebarWidth < MIN_WIDTH || sidebarWidth > MAX_WIDTH) {
+      setSidebarWidth(DEFAULT_WIDTH);
+    }
+  }, [isCollapsed, sidebarWidth]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

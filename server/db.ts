@@ -13,6 +13,7 @@ import {
   patientInsurance,
   patients,
   payments,
+  periodontalStatus,
   toothConditions,
   toothSurfaceConditions,
   treatmentPlans,
@@ -29,6 +30,7 @@ import {
   type InsertPatient,
   type InsertPatientInsurance,
   type InsertPayment,
+  type InsertPeriodontalStatus,
   type InsertToothCondition,
   type InsertToothSurfaceCondition,
   type InsertTreatmentPlan,
@@ -231,13 +233,14 @@ export async function setToothCondition(data: InsertToothCondition) {
       and(
         eq(toothConditions.patientId, data.patientId),
         eq(toothConditions.toothNumber, data.toothNumber),
+        eq(toothConditions.mode, data.mode ?? "status"),
       ),
     )
     .limit(1);
   if (existing.length) {
     await db
       .update(toothConditions)
-      .set({ condition: data.condition, note: data.note })
+      .set({ condition: data.condition, note: data.note, mode: data.mode ?? "status" })
       .where(eq(toothConditions.id, existing[0].id));
     return existing[0].id;
   }
@@ -277,6 +280,59 @@ export async function setToothSurfaceCondition(data: InsertToothSurfaceCondition
     return existing[0].id;
   }
   const result = await db.insert(toothSurfaceConditions).values(data);
+  return result[0].insertId;
+}
+
+const TOOTH_CONDITIONS = [
+  "healthy", "decay", "filling", "crown", "extraction",
+  "implant", "root_canal", "missing", "veneers", "bridge",
+] as const;
+
+export async function setToothConditionsBulk(
+  patientId: number,
+  entries: { toothNumber: string; condition: (typeof TOOTH_CONDITIONS)[number]; mode?: string; note?: string | null }[],
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  for (const e of entries) {
+    await setToothCondition({
+      patientId,
+      toothNumber: e.toothNumber,
+      condition: e.condition,
+      mode: (e.mode ?? "status") as "status" | "plan",
+      note: e.note ?? null,
+    });
+  }
+  return { count: entries.length };
+}
+
+// ---------------------------------------------------------------------------
+// Periodontal (gum) status — 6-point probing per tooth
+// ---------------------------------------------------------------------------
+export async function getPeriodontalStatus(patientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(periodontalStatus).where(eq(periodontalStatus.patientId, patientId));
+}
+
+export async function setPeriodontalStatus(data: InsertPeriodontalStatus) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db
+    .select()
+    .from(periodontalStatus)
+    .where(
+      and(
+        eq(periodontalStatus.patientId, data.patientId),
+        eq(periodontalStatus.toothNumber, data.toothNumber),
+      ),
+    )
+    .limit(1);
+  if (existing.length) {
+    await db.update(periodontalStatus).set(data).where(eq(periodontalStatus.id, existing[0].id));
+    return existing[0].id;
+  }
+  const result = await db.insert(periodontalStatus).values(data);
   return result[0].insertId;
 }
 

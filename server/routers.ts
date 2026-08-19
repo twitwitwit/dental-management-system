@@ -228,11 +228,76 @@ export const appRouter = router({
             "bridge",
           ]),
           note: z.string().nullable().optional(),
+          /** Chart layer: "status" (current findings) or "plan" (planned treatment). */
+          mode: z.enum(["status", "plan"]).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
         requireRoles(ctx, dentistOrAdmin);
-        const id = await db.setToothCondition(input);
+        const id = await db.setToothCondition({ ...input, mode: input.mode ?? "status" });
+        return { id };
+      }),
+    setToothConditionsBulk: protectedProcedure
+      .input(
+        z.object({
+          patientId: z.number(),
+          teeth: z.array(
+            z.object({
+              toothNumber: z.string().min(1).max(4),
+              condition: z.enum([
+                "healthy", "decay", "filling", "crown", "extraction",
+                "implant", "root_canal", "missing", "veneers", "bridge",
+              ]),
+              mode: z.enum(["status", "plan"]).optional(),
+              note: z.string().nullable().optional(),
+            }),
+          ).min(1),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        requireRoles(ctx, dentistOrAdmin);
+        return db.setToothConditionsBulk(
+          input.patientId,
+          input.teeth.map(t => ({ ...t, mode: t.mode ?? "status" })),
+        );
+      }),
+    /** Periodontal (gum) status: 6-point probing depths + recession/mobility/bleeding per tooth. */
+    perio: protectedProcedure
+      .input(z.object({ patientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        requireRoles(ctx, dentistOrAdmin);
+        return db.getPeriodontalStatus(input.patientId);
+      }),
+    setPerio: protectedProcedure
+      .input(
+        z.object({
+          patientId: z.number(),
+          toothNumber: z.string().min(1).max(4),
+          pd: z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
+          recession: z.number().optional(),
+          mobility: z.enum(["0", "1", "2", "3"]).optional(),
+          bleeding: z.boolean().optional(),
+          plaque: z.boolean().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        requireRoles(ctx, dentistOrAdmin);
+        const [pd1, pd2, pd3, pd4, pd5, pd6] = input.pd;
+        const clampPd = (v: number) => Math.max(0, Math.min(25, Number(v) || 0));
+        const id = await db.setPeriodontalStatus({
+          patientId: input.patientId,
+          toothNumber: input.toothNumber,
+          pd1: String(clampPd(pd1)),
+          pd2: String(clampPd(pd2)),
+          pd3: String(clampPd(pd3)),
+          pd4: String(clampPd(pd4)),
+          pd5: String(clampPd(pd5)),
+          pd6: String(clampPd(pd6)),
+          recession: String(Math.max(0, Math.min(25, Number(input.recession) || 0))),
+          mobility: input.mobility ?? "0",
+          bleeding: input.bleeding ? 1 : 0,
+          plaque: input.plaque ? 1 : 0,
+        });
         return { id };
       }),
     surfaces: protectedProcedure
