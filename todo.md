@@ -99,3 +99,11 @@
 - [x] Rebuild ToothGlyph: odontogram-style anatomy per tooth type — pulp chamber, crown/root detail, pink gingiva band around crown, multi-root molars (46 template), generated into client/src/lib/toothAnatomy.ts
 - [x] Keep condition color tinting, missing/extraction dimming, click selection, FDI labels, surface chart compatibility
 - [x] Verify visually (patient detail + clinical page), run tests (14/14), checkpoint, deliver
+
+## Canva Prototype Showcase (user request)
+- [ ] Capture clean full-page screenshots of each app module page (Dashboard, Patients, Appointments, Clinical, Billing, Inventory, Insurance, Reports, Staff, Settings)
+- [ ] Prepare screenshot assets (crop sidebar, consistent 16:9 framing)
+- [ ] Create one high-fidelity prototype design per module in the user's Canva account
+- [ ] Verify designs render correctly in Canva, export as images, and deliver links/exports
+
+Screenshot crops verified: sidebar correctly removed on all 10 modules; each content crop is 1360px wide (heights 913–3204px). Assets ready at /home/ubuntu/canva_shots/*_content.png. Billing/inventory crops confirmed clean.
