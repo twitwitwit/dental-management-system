@@ -84,7 +84,8 @@ function ToothCell({
           number={number}
           fill={fill}
           stroke={stroke}
-          hatchColor={cond ? stroke : "#64748b"}
+          cond={cond}
+          selected={selected}
         />
       </svg>
       <span

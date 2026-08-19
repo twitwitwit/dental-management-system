@@ -93,3 +93,9 @@
 - [x] UI: Tooth detail dialog showing both whole-tooth and per-surface marking
 - [x] Wired into PatientDetail Clinical tab and Clinical page
 - [x] Demo surface data seeded, vitest 14/14 passing, checkpoint saved
+
+## Odontogram Anatomy Adaptation (user request: adapt the anatomy of every tooth from ZoliQua/React-Odontogram-Modul)
+- [x] Study the odontogram repo's tooth SVG assets and anatomy shapes (measured SVG templates 11/12/13/14/15/16/17/31/46)
+- [x] Rebuild ToothGlyph: odontogram-style anatomy per tooth type — pulp chamber, crown/root detail, pink gingiva band around crown, multi-root molars (46 template), generated into client/src/lib/toothAnatomy.ts
+- [x] Keep condition color tinting, missing/extraction dimming, click selection, FDI labels, surface chart compatibility
+- [x] Verify visually (patient detail + clinical page), run tests (14/14), checkpoint, deliver
